@@ -2874,6 +2874,20 @@ body {
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-text {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
 .profile-info {
     flex: 1;
 }
@@ -4246,13 +4260,13 @@ body {
                 <!-- Профиль пользователя -->
                 <div class="profile-header">
                     <div class="profile-avatar">
-                        <div class="avatar-placeholder">
+                        <div class="avatar-placeholder" id="profile-avatar-placeholder">
                             <span class="avatar-icon">👤</span>
                         </div>
                     </div>
                     <div class="profile-info">
-                        <h2 class="profile-name">Мой профиль</h2>
-                        <p class="profile-subtitle">Управляйте своими объявлениями</p>
+                        <h2 class="profile-name" id="profile-display-name">Мой профиль</h2>
+                        <p class="profile-subtitle" id="profile-display-subtitle">Управляйте своими объявлениями</p>
                     </div>
                 </div>
 
@@ -6609,6 +6623,85 @@ function getTelegramWebApp() {
     return window.Telegram?.WebApp || null;
 }
 
+function resolveProfileUser() {
+    const currentTg = getTelegramWebApp() || tg;
+    if (currentTg && currentTg.initDataUnsafe && currentTg.initDataUnsafe.user) {
+        return currentTg.initDataUnsafe.user;
+    }
+    return null;
+}
+
+function getProfileDisplayName(user) {
+    if (!user) return 'Мой профиль';
+    const fullName = [user.first_name, user.last_name]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+    if (fullName) return fullName;
+    if (user.username) return `@${user.username}`;
+    return 'Мой профиль';
+}
+
+function getProfileInitial(user) {
+    if (!user) return '👤';
+    const firstName = String(user.first_name || '').trim();
+    const lastName = String(user.last_name || '').trim();
+    const username = String(user.username || '').trim();
+    const source = firstName || lastName || username;
+    if (!source) return '👤';
+    return source.charAt(0).toUpperCase();
+}
+
+function renderProfileAvatar(user) {
+    const avatarPlaceholder = document.getElementById('profile-avatar-placeholder');
+    if (!avatarPlaceholder) return;
+
+    const applyFallback = () => {
+        avatarPlaceholder.innerHTML = '';
+        const fallback = document.createElement('span');
+        fallback.className = 'avatar-text';
+        fallback.textContent = getProfileInitial(user);
+        avatarPlaceholder.appendChild(fallback);
+    };
+
+    const photoUrl = String(user?.photo_url || '').trim();
+    if (!photoUrl) {
+        applyFallback();
+        return;
+    }
+
+    avatarPlaceholder.innerHTML = '';
+    const image = document.createElement('img');
+    image.className = 'avatar-image';
+    image.alt = getProfileDisplayName(user);
+    image.src = photoUrl;
+    image.loading = 'lazy';
+    image.referrerPolicy = 'no-referrer';
+    image.onerror = applyFallback;
+    avatarPlaceholder.appendChild(image);
+}
+
+function updateProfileIdentity() {
+    const nameElement = document.getElementById('profile-display-name');
+    const subtitleElement = document.getElementById('profile-display-subtitle');
+    const user = resolveProfileUser();
+
+    if (nameElement) {
+        nameElement.textContent = getProfileDisplayName(user);
+    }
+
+    if (subtitleElement) {
+        if (user?.username) {
+            subtitleElement.textContent = `@${user.username}`;
+        } else {
+            subtitleElement.textContent = 'Управляйте своими объявлениями';
+        }
+    }
+
+    renderProfileAvatar(user);
+}
+
 function resetParserPreviewUI() {
     parserPreviewState.fileName = '';
     parserPreviewState.headers = [];
@@ -6879,6 +6972,7 @@ function openMyAdsModal() {
         return;
     }
 
+    updateProfileIdentity();
     renderMyAds();
     updateProfileNotifications();
     updateParserControlsVisibility();
@@ -7464,6 +7558,7 @@ function initializeAdManager() {
     advertisementManager = new AdvertisementManager();
     console.log('✅ Advertisement manager initialized');
     
+    updateProfileIdentity();
     setupAdEventListeners();
     updateProfileNotifications();
     updateParserControlsVisibility();
