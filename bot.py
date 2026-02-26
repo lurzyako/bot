@@ -1202,7 +1202,7 @@ async def parse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await update.message.reply_text(
         "📥 Пришлите Excel-файл (`.xlsx`, `.xls` или `.xlsm`) одним документом.\n"
-        "После загрузки я автоматически запущу парсер и пришлю `data.json` и `index.html`.",
+        "После загрузки я автоматически запущу парсер, пришлю предпросмотр таблицы и готовый `index.html`.",
         parse_mode="Markdown"
     )
 
@@ -1309,7 +1309,6 @@ async def parse_document_handler(update: Update, context: ContextTypes.DEFAULT_T
         generate_site(cards, output_dir)
         excel_ads_count = replace_excel_ads(cards)
 
-        data_path = output_dir / "data.json"
         index_path = output_dir / "index.html"
 
         summary = (
@@ -1322,23 +1321,21 @@ async def parse_document_handler(update: Update, context: ContextTypes.DEFAULT_T
         )
         await update.message.reply_text(summary)
 
-        if data_path.exists():
-            with open(data_path, "rb") as f:
-                await update.message.reply_document(
-                    document=f,
-                    filename=f"data_{timestamp}.json"
-                )
+        preview_df = df.head(8).fillna("")
+        preview_text = preview_df.to_string(index=False)
+        if len(preview_text) > 3500:
+            preview_text = preview_text[:3500] + "\n..."
+        await update.message.reply_text(
+            "📊 Предпросмотр таблицы (первые строки):\n"
+            f"<pre>{html.escape(preview_text)}</pre>",
+            parse_mode="HTML"
+        )
+
         if index_path.exists():
             with open(index_path, "rb") as f:
                 await update.message.reply_document(
                     document=f,
                     filename=f"index_{timestamp}.html"
-                )
-        if ADS_FEED_FILE.exists():
-            with open(ADS_FEED_FILE, "rb") as f:
-                await update.message.reply_document(
-                    document=f,
-                    filename="ads_feed.json"
                 )
 
         log_user_action(user_data, "parse_success", f"Файл обработан: {filename}, карточек: {len(cards)}")

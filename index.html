@@ -2965,6 +2965,76 @@ body {
     line-height: 1.4;
 }
 
+.parser-columns-editor {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.parser-column-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.parser-column-editor label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.parser-column-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.parser-preview-table-wrap {
+    max-height: 340px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.parser-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 640px;
+}
+
+.parser-preview-table th,
+.parser-preview-table td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 10px;
+    vertical-align: top;
+    text-align: left;
+    font-size: 12px;
+}
+
+.parser-preview-table th {
+    position: sticky;
+    top: 0;
+    background: rgba(10, 10, 10, 0.95);
+    color: var(--primary);
+    z-index: 1;
+    font-weight: 700;
+}
+
+.parser-preview-table td[contenteditable="true"] {
+    outline: none;
+    cursor: text;
+}
+
+.parser-preview-table td[contenteditable="true"]:focus {
+    background: rgba(255, 215, 0, 0.08);
+}
+
 /* Секция объявлений */
 .profile-ads-section {
     padding: 0 25px 25px 25px;
@@ -4407,15 +4477,41 @@ body {
             <div class="filters-content">
                 <div class="filter-group">
                     <div class="filter-header">
-                        <div class="filter-title">Как это работает</div>
+                        <div class="filter-title">1) Загрузите Excel для предпросмотра</div>
                     </div>
-                    <p style="color: var(--text-secondary); line-height: 1.6; margin: 0;">
-                        Нажмите «Запустить парсер», затем отправьте Excel-файл в чат с ботом.
-                        Поддерживаются форматы <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.xlsm</strong>.
+                    <input type="file"
+                           id="parser-excel-file"
+                           accept=".xlsx,.xls,.xlsm"
+                           style="display: none;">
+                    <div class="modal-actions" style="margin-top: 0;">
+                        <button class="btn btn-secondary"
+                                type="button"
+                                id="parser-pick-file"
+                                style="flex: 1;">
+                            📂 Выбрать Excel
+                        </button>
+                        <button class="btn btn-secondary"
+                                type="button"
+                                id="parser-download-edited"
+                                style="flex: 1;"
+                                disabled>
+                            💾 Скачать изменённый .xlsx
+                        </button>
+                    </div>
+                    <p class="parser-note" id="parser-file-status">
+                        Файл не выбран.
                     </p>
-                    <p class="parser-note">
-                        После обработки бот пришлёт итоговые файлы: <strong>data.json</strong>, <strong>index.html</strong> и актуальный <strong>ads_feed.json</strong>.
-                    </p>
+                </div>
+
+                <div class="filter-group" id="parser-preview-container" style="display: none;">
+                    <div class="filter-header">
+                        <div class="filter-title">2) Предпросмотр и редактирование столбцов</div>
+                    </div>
+                    <div class="parser-columns-editor" id="parser-columns-editor"></div>
+                    <div class="parser-preview-table-wrap">
+                        <table class="parser-preview-table" id="parser-preview-table"></table>
+                    </div>
+                    <p class="parser-note" id="parser-preview-meta"></p>
                 </div>
 
                 <div class="modal-actions">
@@ -4428,7 +4524,7 @@ body {
                             style="flex: 2;"
                             id="parser-send-request">
                         <span class="btn-icon">🚀</span>
-                        <span>Запустить парсер</span>
+                        <span>Запустить парсер в боте</span>
                     </button>
                 </div>
             </div>
@@ -4463,6 +4559,8 @@ body {
         </div>
     </div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="scripts.js"></script>
     <script>
 // Инициализация Telegram WebApp
@@ -5467,6 +5565,14 @@ let fuzzySearchInstance = null;
 let autocompleteInstance = null;
 let telegramRequestManager = null;
 let advertisementManager = null;
+let parserEditorInitialized = false;
+const PARSER_PREVIEW_ROW_LIMIT = 20;
+const parserPreviewState = {
+    fileName: '',
+    headers: [],
+    editedHeaders: [],
+    rows: []
+};
 
 // ========== КОНЕЦ ОБРАБОТКИ ИЗОБРАЖЕНИЙ ==========
 
@@ -6499,6 +6605,233 @@ function normalizeClientRole(roleRaw) {
     return 'user';
 }
 
+function getTelegramWebApp() {
+    return window.Telegram?.WebApp || null;
+}
+
+function resetParserPreviewUI() {
+    parserPreviewState.fileName = '';
+    parserPreviewState.headers = [];
+    parserPreviewState.editedHeaders = [];
+    parserPreviewState.rows = [];
+
+    const previewContainer = document.getElementById('parser-preview-container');
+    const columnsEditor = document.getElementById('parser-columns-editor');
+    const previewTable = document.getElementById('parser-preview-table');
+    const previewMeta = document.getElementById('parser-preview-meta');
+    const fileStatus = document.getElementById('parser-file-status');
+    const downloadBtn = document.getElementById('parser-download-edited');
+
+    if (previewContainer) previewContainer.style.display = 'none';
+    if (columnsEditor) columnsEditor.innerHTML = '';
+    if (previewTable) previewTable.innerHTML = '';
+    if (previewMeta) previewMeta.textContent = '';
+    if (fileStatus) fileStatus.textContent = 'Файл не выбран.';
+    if (downloadBtn) downloadBtn.disabled = true;
+}
+
+function initializeParserEditor() {
+    if (parserEditorInitialized) return;
+    parserEditorInitialized = true;
+
+    const fileInput = document.getElementById('parser-excel-file');
+    const pickFileBtn = document.getElementById('parser-pick-file');
+    const downloadBtn = document.getElementById('parser-download-edited');
+
+    if (pickFileBtn && fileInput) {
+        pickFileBtn.addEventListener('click', () => fileInput.click());
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            await loadParserWorkbook(file);
+        });
+    }
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadEditedParserWorkbook);
+    }
+}
+
+async function loadParserWorkbook(file) {
+    const fileStatus = document.getElementById('parser-file-status');
+    const previewContainer = document.getElementById('parser-preview-container');
+    const downloadBtn = document.getElementById('parser-download-edited');
+
+    try {
+        if (!window.XLSX) {
+            throw new Error('Библиотека чтения Excel не загружена');
+        }
+
+        const extension = (file.name.split('.').pop() || '').toLowerCase();
+        if (!['xlsx', 'xls', 'xlsm'].includes(extension)) {
+            throw new Error('Поддерживаются только .xlsx, .xls и .xlsm');
+        }
+
+        const data = await file.arrayBuffer();
+        const workbook = window.XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames?.[0];
+        if (!firstSheetName) {
+            throw new Error('В файле не найдено листов');
+        }
+
+        const worksheet = workbook.Sheets[firstSheetName];
+        const matrix = window.XLSX.utils.sheet_to_json(worksheet, {
+            header: 1,
+            defval: ''
+        });
+
+        if (!Array.isArray(matrix) || matrix.length === 0) {
+            throw new Error('Файл не содержит данных для предпросмотра');
+        }
+
+        const maxColumns = matrix.reduce((acc, row) => {
+            const rowLength = Array.isArray(row) ? row.length : 0;
+            return Math.max(acc, rowLength);
+        }, 0);
+
+        if (maxColumns === 0) {
+            throw new Error('Не удалось определить столбцы в файле');
+        }
+
+        const normalizedRows = matrix.map(row => {
+            const source = Array.isArray(row) ? row : [];
+            return Array.from({ length: maxColumns }, (_, index) => String(source[index] ?? ''));
+        });
+
+        const headers = normalizedRows[0].map((value, index) => {
+            const cleanValue = String(value || '').trim();
+            return cleanValue || `Колонка ${index + 1}`;
+        });
+
+        parserPreviewState.fileName = file.name;
+        parserPreviewState.headers = [...headers];
+        parserPreviewState.editedHeaders = [...headers];
+        parserPreviewState.rows = normalizedRows.slice(1);
+
+        renderParserColumnEditors();
+        renderParserPreviewTable();
+
+        if (previewContainer) previewContainer.style.display = 'block';
+        if (downloadBtn) downloadBtn.disabled = false;
+        if (fileStatus) fileStatus.textContent = `Файл: ${file.name} (${firstSheetName})`;
+        showNotification('Предпросмотр таблицы загружен', 'success');
+    } catch (error) {
+        console.error('Parser preview error:', error);
+        resetParserPreviewUI();
+        if (fileStatus) {
+            fileStatus.textContent = `Ошибка: ${error.message || 'не удалось обработать файл'}`;
+        }
+        showNotification(error.message || 'Ошибка чтения Excel', 'error');
+    }
+}
+
+function renderParserColumnEditors() {
+    const container = document.getElementById('parser-columns-editor');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    parserPreviewState.editedHeaders.forEach((header, colIndex) => {
+        const editor = document.createElement('div');
+        editor.className = 'parser-column-editor';
+
+        const label = document.createElement('label');
+        label.setAttribute('for', `parser-col-${colIndex}`);
+        label.textContent = `Столбец ${colIndex + 1}`;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `parser-col-${colIndex}`;
+        input.className = 'parser-column-input';
+        input.value = header;
+        input.placeholder = `Колонка ${colIndex + 1}`;
+        input.addEventListener('input', () => {
+            const nextValue = input.value.trim();
+            parserPreviewState.editedHeaders[colIndex] = nextValue || `Колонка ${colIndex + 1}`;
+            renderParserPreviewTable();
+        });
+
+        editor.appendChild(label);
+        editor.appendChild(input);
+        container.appendChild(editor);
+    });
+}
+
+function renderParserPreviewTable() {
+    const table = document.getElementById('parser-preview-table');
+    const meta = document.getElementById('parser-preview-meta');
+    if (!table) return;
+
+    table.innerHTML = '';
+
+    if (!parserPreviewState.editedHeaders.length) {
+        if (meta) meta.textContent = '';
+        return;
+    }
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    parserPreviewState.editedHeaders.forEach((header) => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+
+    const tbody = document.createElement('tbody');
+    const previewRows = parserPreviewState.rows.slice(0, PARSER_PREVIEW_ROW_LIMIT);
+
+    previewRows.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        parserPreviewState.editedHeaders.forEach((_, colIndex) => {
+            const td = document.createElement('td');
+            td.textContent = String(row[colIndex] ?? '');
+            td.setAttribute('contenteditable', 'true');
+            td.addEventListener('blur', () => {
+                if (!parserPreviewState.rows[rowIndex]) {
+                    parserPreviewState.rows[rowIndex] = [];
+                }
+                parserPreviewState.rows[rowIndex][colIndex] = td.textContent.trim();
+            });
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+
+    if (meta) {
+        meta.textContent = `Столбцов: ${parserPreviewState.editedHeaders.length}. Строк: ${parserPreviewState.rows.length}. Показаны первые ${previewRows.length} строк.`;
+    }
+}
+
+function downloadEditedParserWorkbook() {
+    if (!window.XLSX) {
+        showNotification('Не удалось инициализировать экспорт Excel', 'error');
+        return;
+    }
+
+    if (!parserPreviewState.editedHeaders.length) {
+        showNotification('Сначала загрузите Excel-файл', 'warning');
+        return;
+    }
+
+    const aoa = [parserPreviewState.editedHeaders, ...parserPreviewState.rows];
+    const ws = window.XLSX.utils.aoa_to_sheet(aoa);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Preview');
+
+    const baseName = parserPreviewState.fileName
+        ? parserPreviewState.fileName.replace(/\.(xlsx|xls|xlsm)$/i, '')
+        : 'parser_preview';
+    const outputName = `${baseName}_edited.xlsx`;
+    window.XLSX.writeFile(wb, outputName);
+}
+
 function canCurrentUserUseParser() {
     if (!advertisementManager || typeof advertisementManager.canCurrentUserManageAds !== 'function') {
         return false;
@@ -6565,6 +6898,8 @@ function openParserModal() {
         return;
     }
 
+    initializeParserEditor();
+
     const modal = document.getElementById('parser-modal');
     if (modal) {
         modal.style.display = 'block';
@@ -6575,26 +6910,36 @@ function openParserModal() {
 }
 
 function sendParserRequest() {
-    if (tg && typeof tg.sendData === 'function') {
-        tg.sendData(JSON.stringify({
+    const currentTg = getTelegramWebApp() || tg;
+    if (currentTg) {
+        tg = currentTg;
+    }
+
+    if (currentTg && typeof currentTg.sendData === 'function') {
+        currentTg.sendData(JSON.stringify({
             action: 'parse_request',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            preview: {
+                file_name: parserPreviewState.fileName || null,
+                columns: parserPreviewState.editedHeaders.slice(0, 50),
+                rows_count: parserPreviewState.rows.length
+            }
         }));
 
-        if (tg.HapticFeedback) {
-            tg.HapticFeedback.notificationOccurred('success');
+        if (currentTg.HapticFeedback) {
+            currentTg.HapticFeedback.notificationOccurred('success');
         }
 
         closeCurrentModal();
-        if (typeof tg.showAlert === 'function') {
-            tg.showAlert('✅ Запрос отправлен. Пришлите Excel-файл в чат с ботом.');
+        if (typeof currentTg.showAlert === 'function') {
+            currentTg.showAlert('✅ Запрос отправлен. Теперь отправьте Excel-файл в чат с ботом документом.');
         } else {
-            showNotification('Запрос отправлен. Пришлите Excel-файл в чат с ботом.', 'success');
+            showNotification('Запрос отправлен. Теперь отправьте Excel-файл в чат с ботом.', 'success');
         }
         return;
     }
 
-    showNotification('Откройте мини-приложение из Telegram, чтобы запустить парсер.', 'warning');
+    showNotification('WebApp открыт без Telegram API. Откройте страницу кнопкой из чата бота и повторите.', 'warning');
 }
 
 /**
