@@ -1,0 +1,20 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Environment
+.env
+
+# OS
+.DS_Store
+
+# Runtime data / generated
+parsed_output/
+tmp_uploads/
+auth_users.json
+users_log.json
+ads_feed.json
+
+# Local DB
+*.sqlite3
