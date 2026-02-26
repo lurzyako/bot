@@ -86,7 +86,7 @@ ROLE_LABELS = {
     USER_ROLE_LEASING_COMPANY: "Лизинговая компания",
     USER_ROLE_ADMIN: "Администратор",
 }
-BOT_BUILD_VERSION = os.getenv("BOT_BUILD_VERSION", "2026-02-26-parser-safe-import-v2")
+BOT_BUILD_VERSION = os.getenv("BOT_BUILD_VERSION", datetime.now().strftime("%Y%m%d%H%M%S"))
 
 
 def is_parser_enabled() -> bool:
@@ -272,6 +272,7 @@ def build_web_app_url(user_id: int | None = None) -> str:
     role = USER_ROLE_USER if user_id is None else get_user_role(user_id)
     parsed = urlparse(HTML_FILE_URL)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["v"] = BOT_BUILD_VERSION
     query["role"] = role
     if user_id is not None:
         query["uid"] = str(user_id)
@@ -1995,6 +1996,9 @@ def main() -> None:
     # Запускаем бота
     logger.info("Бот КФЛ Лизинг запущен!")
     logger.info("Build version: %s", BOT_BUILD_VERSION)
+    logger.info("WebApp URL base: %s", HTML_FILE_URL)
+    if ADMIN_IDS:
+        logger.info("WebApp URL (admin): %s", build_web_app_url(ADMIN_IDS[0]))
     logger.info(f"Логи пользователей сохраняются в: {USERS_LOG_FILE}")
     logger.info(f"Файл аутентификации: {AUTH_USERS_FILE}")
     logger.info(f"Администратор: ID {ADMIN_IDS[0]}")
