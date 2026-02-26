@@ -1,0 +1,323 @@
+{
+  "version": "1.0",
+  "fuzzy_keywords": {
+    "code": {
+      "primary": [
+        "код предложения",
+        "код",
+        "code",
+        "id"
+      ],
+      "synonyms": [
+        "номер",
+        "идентификатор",
+        "number"
+      ]
+    },
+    "category": {
+      "primary": [
+        "категория тс",
+        "категория",
+        "category"
+      ],
+      "synonyms": [
+        "тип категории",
+        "class"
+      ]
+    },
+    "status": {
+      "primary": [
+        "статус изт",
+        "статус",
+        "status"
+      ],
+      "synonyms": [
+        "состояние продажи",
+        "state"
+      ]
+    },
+    "brand": {
+      "primary": [
+        "марка",
+        "brand",
+        "бренд"
+      ],
+      "synonyms": [
+        "производитель",
+        "make",
+        "manufacturer"
+      ]
+    },
+    "model": {
+      "primary": [
+        "модель",
+        "model"
+      ],
+      "synonyms": [
+        "название",
+        "name"
+      ]
+    },
+    "modification": {
+      "primary": [
+        "модификация",
+        "modification",
+        "комплектация"
+      ],
+      "synonyms": [
+        "версия",
+        "version",
+        "trim"
+      ]
+    },
+    "color": {
+      "primary": [
+        "цвет кузова",
+        "цвет",
+        "color"
+      ],
+      "synonyms": [
+        "окраска",
+        "paint",
+        "цвет автомобиля"
+      ]
+    },
+    "condition": {
+      "primary": [
+        "состояние пл",
+        "состояние",
+        "condition"
+      ],
+      "synonyms": [
+        "износ",
+        "quality"
+      ]
+    },
+    "vin": {
+      "primary": [
+        "vin",
+        "вин",
+        "vin номер"
+      ],
+      "synonyms": [
+        "номер кузова",
+        "chassis",
+        "идентификатор тс"
+      ]
+    },
+    "vehicle_type": {
+      "primary": [
+        "тип тс",
+        "vehicle type",
+        "тип транспортного средства"
+      ],
+      "synonyms": [
+        "класс",
+        "vehicle class",
+        "категория тс"
+      ]
+    },
+    "year": {
+      "primary": [
+        "год выпуска",
+        "год",
+        "year"
+      ],
+      "synonyms": [
+        "дата выпуска",
+        "производство",
+        "year of manufacture"
+      ]
+    },
+    "mileage": {
+      "primary": [
+        "пробег",
+        "mileage",
+        "км",
+        "километраж"
+      ],
+      "synonyms": [
+        "одометр",
+        "odometer",
+        "пробег км"
+      ]
+    },
+    "price": {
+      "primary": [
+        "срс с переоценкой",
+        "срс",
+        "цена",
+        "price",
+        "стоимость"
+      ],
+      "synonyms": [
+        "финальная цена",
+        "final price",
+        "итоговая цена"
+      ]
+    },
+    "price_original": {
+      "primary": [
+        "срс",
+        "original price",
+        "исходная цена"
+      ],
+      "synonyms": [
+        "базовая цена",
+        "начальная цена",
+        "первоначальная цена"
+      ]
+    },
+    "price_revaluation": {
+      "primary": [
+        "переоценка",
+        "revaluation"
+      ],
+      "synonyms": [
+        "корректировка цены",
+        "adjustment",
+        "изменение цены"
+      ]
+    },
+    "keys": {
+      "primary": [
+        "количество ключей",
+        "ключи",
+        "количество ключей после изъятия"
+      ],
+      "synonyms": [
+        "keys",
+        "комплект ключей",
+        "number of keys"
+      ]
+    },
+    "pts_type": {
+      "primary": [
+        "тип птс",
+        "птс",
+        "эптс",
+        "тип птс/эптс"
+      ],
+      "synonyms": [
+        "паспорт тс",
+        "pts",
+        "паспорт транспортного средства"
+      ]
+    },
+    "federal_district": {
+      "primary": [
+        "федеральный округ",
+        "округ",
+        "federal district"
+      ],
+      "synonyms": [
+        "регион",
+        "district",
+        "область"
+      ]
+    },
+    "address": {
+      "primary": [
+        "адрес стоянки",
+        "адрес",
+        "address"
+      ],
+      "synonyms": [
+        "местоположение",
+        "location",
+        "место",
+        "стоянка"
+      ]
+    },
+    "days_on_sale": {
+      "primary": [
+        "кол-во дней в реализации",
+        "дни в реализации",
+        "дни в продаже"
+      ],
+      "synonyms": [
+        "days on sale",
+        "время продажи",
+        "дней на продаже"
+      ]
+    },
+    "photo_url": {
+      "primary": [
+        "фото и видео материалы тс",
+        "фото и видео материалы",
+        "фото",
+        "ссылка на фото"
+      ],
+      "synonyms": [
+        "photos",
+        "images",
+        "media",
+        "видео",
+        "материалы"
+      ]
+    },
+    "comment": {
+      "primary": [
+        "комментарий по оценке",
+        "комментарий",
+        "comment"
+      ],
+      "synonyms": [
+        "примечание",
+        "notes",
+        "описание",
+        "remarks"
+      ]
+    },
+    "discount_pct": {
+      "primary": [
+        "% скидки",
+        "скидка %",
+        "процент скидки"
+      ],
+      "synonyms": [
+        "discount",
+        "процент",
+        "discount percentage"
+      ]
+    },
+    "discount_price": {
+      "primary": [
+        "минимальная цена со скидкой",
+        "цена со скидкой",
+        "финальная цена"
+      ],
+      "synonyms": [
+        "discounted price",
+        "sale price",
+        "цена после скидки"
+      ]
+    }
+  },
+  "mappings": {
+    "12345": {
+      "Код предложения": "code",
+      "Категория ТС": "category",
+      "Статус ИЗТ": "status",
+      "Марка": "brand",
+      "Модель": "model",
+      "Модификация": "modification",
+      "Цвет кузова": "color",
+      "Состояние ПЛ": "condition",
+      "VIN": "vin",
+      "Тип ТС": "vehicle_type",
+      "Год выпуска": "year",
+      "Пробег": "mileage",
+      "СРС": "price",
+      "Переоценка": "price_revaluation",
+      "СРС с переоценкой": "price_original",
+      "Количество ключей после изъятия": "keys",
+      "Тип ПТС/ЭПТС": "pts_type",
+      "Федеральный округ": "federal_district",
+      "Адрес стоянки": "address",
+      "Кол-во дней в реализации": "days_on_sale",
+      "Фото и видео материалы ТС": "photo_url",
+      "Комментарий по оценке": "comment"
+    }
+  }
+}

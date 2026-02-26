@@ -25,9 +25,21 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in os.sys.path:
     os.sys.path.insert(0, str(ROOT_DIR))
 
-from parser import read_flexible, prepare_cards, generate_site
-import config_manager
-import column_mapper
+PARSER_AVAILABLE = False
+PARSER_IMPORT_ERROR = ""
+try:
+    from parser import read_flexible, prepare_cards, generate_site
+    import config_manager
+    import column_mapper
+
+    PARSER_AVAILABLE = True
+except Exception as parser_import_exc:
+    read_flexible = None
+    prepare_cards = None
+    generate_site = None
+    config_manager = None
+    column_mapper = None
+    PARSER_IMPORT_ERROR = str(parser_import_exc)
 
 # Настройка логирования
 logging.basicConfig(
@@ -65,6 +77,10 @@ ROLE_LABELS = {
     USER_ROLE_LEASING_COMPANY: "Лизинговая компания",
     USER_ROLE_ADMIN: "Администратор",
 }
+
+
+def is_parser_enabled() -> bool:
+    return PARSER_AVAILABLE and all([read_flexible, prepare_cards, generate_site, config_manager, column_mapper])
 
 
 def backend_sync_enabled() -> bool:
@@ -1135,6 +1151,14 @@ async def parse_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         log_user_action(user_data, "parse_denied", "Попытка запуска парсера без прав")
         return
 
+    if not is_parser_enabled():
+        await update.message.reply_text(
+            "⛔ Excel-парсер недоступен на этом сервере. "
+            "Добавьте модули `parser.py`, `config_manager.py`, `column_mapper.py` в деплой."
+        )
+        log_user_action(user_data, "parse_unavailable", PARSER_IMPORT_ERROR or "parser module is missing")
+        return
+
     context.user_data["parser_waiting_file"] = True
     log_user_action(user_data, "parse_start", "Ожидание Excel-файла для парсинга")
 
@@ -1165,6 +1189,14 @@ async def parse_document_handler(update: Update, context: ContextTypes.DEFAULT_T
             "⛔ Загрузка файлов для парсинга доступна только ролям «Администратор» и «Лизинговая компания»."
         )
         log_user_action(user_data, "parse_file_denied", "Попытка загрузки файла без прав")
+        return
+
+    if not is_parser_enabled():
+        await update.message.reply_text(
+            "⛔ Excel-парсер недоступен на этом сервере. "
+            "Невозможно обработать файл без модулей `parser.py`, `config_manager.py`, `column_mapper.py`."
+        )
+        log_user_action(user_data, "parse_file_unavailable", PARSER_IMPORT_ERROR or "parser module is missing")
         return
 
     if not context.user_data.get("parser_waiting_file"):
@@ -1934,6 +1966,10 @@ def main() -> None:
         logger.info("Backend sync: ENABLED (%s)", DJANGO_BACKEND_URL)
     else:
         logger.info("Backend sync: disabled (set DJANGO_BACKEND_URL + DJANGO_BACKEND_API_KEY)")
+    if is_parser_enabled():
+        logger.info("Excel parser: ENABLED")
+    else:
+        logger.warning("Excel parser: disabled (%s)", PARSER_IMPORT_ERROR or "module not found")
     
     # Выводим информацию о существующей статистике
     stats = get_user_stats()
