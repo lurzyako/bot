@@ -77,6 +77,7 @@ ROLE_LABELS = {
     USER_ROLE_LEASING_COMPANY: "Лизинговая компания",
     USER_ROLE_ADMIN: "Администратор",
 }
+BOT_BUILD_VERSION = os.getenv("BOT_BUILD_VERSION", "2026-02-26-parser-safe-import-v2")
 
 
 def is_parser_enabled() -> bool:
@@ -1957,6 +1958,7 @@ def main() -> None:
     
     # Запускаем бота
     logger.info("Бот КФЛ Лизинг запущен!")
+    logger.info("Build version: %s", BOT_BUILD_VERSION)
     logger.info(f"Логи пользователей сохраняются в: {USERS_LOG_FILE}")
     logger.info(f"Файл аутентификации: {AUTH_USERS_FILE}")
     logger.info(f"Администратор: ID {ADMIN_IDS[0]}")
