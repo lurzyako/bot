@@ -3503,6 +3503,14 @@ body {
                     aria-label="Открыть фильтры">
                 <span class="sort-btn-text">⚙️ Фильтры</span>
             </button>
+            <button class="sort-btn"
+                    id="parser-sort-btn"
+                    data-action="parser"
+                    title="Импорт из Excel"
+                    style="display: none; background: rgba(255, 215, 0, 0.1); color: var(--primary);"
+                    aria-label="Открыть парсер Excel">
+                <span class="sort-btn-text">📥 Парсер</span>
+            </button>
         </section>
 
         <!-- Обертка для контейнера продуктов -->
@@ -5211,12 +5219,29 @@ class AdvertisementManager {
 
     resolveCurrentRole() {
         const params = new URLSearchParams(window.location.search);
-        const role = String(params.get('role') || 'user').trim().toLowerCase();
-        if (['admin', 'админ', 'администратор'].includes(role)) return 'admin';
-        if (['leasing', 'leasing_company', 'лизинговая', 'лизинговая компания', 'лизинговая_компания'].includes(role)) {
-            return 'leasing_company';
+        const queryRole = normalizeClientRole(params.get('role'));
+        const tgUserId = Number(tg?.initDataUnsafe?.user?.id || 0);
+
+        if (tgUserId && CLIENT_ADMIN_TELEGRAM_IDS.includes(tgUserId)) {
+            return 'admin';
         }
-        return 'user';
+
+        if (queryRole !== 'user') {
+            try {
+                localStorage.setItem('kfl_user_role', queryRole);
+            } catch (error) {
+                console.warn('Failed to persist role from URL:', error);
+            }
+            return queryRole;
+        }
+
+        let storedRole = 'user';
+        try {
+            storedRole = normalizeClientRole(localStorage.getItem('kfl_user_role'));
+        } catch (error) {
+            console.warn('Failed to read stored role:', error);
+        }
+        return storedRole;
     }
 
     canCurrentUserManageAds() {
@@ -6464,6 +6489,17 @@ function formatFullPrice(price) {
     }).format(price);
 }
 
+const CLIENT_ADMIN_TELEGRAM_IDS = [1729659964];
+
+function normalizeClientRole(roleRaw) {
+    const role = String(roleRaw || 'user').trim().toLowerCase();
+    if (['admin', 'админ', 'администратор'].includes(role)) return 'admin';
+    if (['leasing', 'leasing_company', 'лизинговая', 'лизинговая компания', 'лизинговая_компания'].includes(role)) {
+        return 'leasing_company';
+    }
+    return 'user';
+}
+
 function canCurrentUserUseParser() {
     if (!advertisementManager || typeof advertisementManager.canCurrentUserManageAds !== 'function') {
         return false;
@@ -6472,9 +6508,15 @@ function canCurrentUserUseParser() {
 }
 
 function updateParserControlsVisibility() {
-    const parserButton = document.getElementById('open-parser-modal-btn');
-    if (!parserButton) return;
-    parserButton.style.display = canCurrentUserUseParser() ? 'flex' : 'none';
+    const allowed = canCurrentUserUseParser();
+    const parserProfileButton = document.getElementById('open-parser-modal-btn');
+    const parserSortButton = document.getElementById('parser-sort-btn');
+    if (parserProfileButton) {
+        parserProfileButton.style.display = allowed ? 'flex' : 'none';
+    }
+    if (parserSortButton) {
+        parserSortButton.style.display = allowed ? 'inline-flex' : 'none';
+    }
 }
 
 // ========== ФУНКЦИИ ДЛЯ ОБЪЯВЛЕНИЙ ==========
@@ -7175,6 +7217,8 @@ function setupEventListeners() {
                 
                 if (action === 'filters') {
                     openFiltersModal();
+                } else if (action === 'parser') {
+                    openParserModal();
                 } else if (sortType) {
                     setSort(sortType);
                 }
