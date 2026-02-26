@@ -2953,6 +2953,18 @@ body {
     font-size: 20px;
 }
 
+.btn-parser-import {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.parser-note {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
 /* Секция объявлений */
 .profile-ads-section {
     padding: 0 25px 25px 25px;
@@ -4190,6 +4202,13 @@ body {
                         <span class="btn-icon">➕</span>
                         <span>Создать объявление</span>
                     </button>
+                    <button class="btn btn-secondary btn-parser-import"
+                            id="open-parser-modal-btn"
+                            style="display: none;"
+                            onclick="openParserModal()">
+                        <span class="btn-icon">📥</span>
+                        <span>Импорт из Excel (парсер)</span>
+                    </button>
                 </div>
 
                 <!-- Список объявлений -->
@@ -4360,6 +4379,49 @@ body {
                             id="calc-send-request">
                         <span class="btn-icon">📝</span>
                         <span>Оставить заявку</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно парсера Excel -->
+    <div class="modal"
+         id="parser-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="parser-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="parser-modal-title">📥 Импорт объявлений из Excel</h2>
+                <button class="modal-close"
+                        aria-label="Закрыть">×</button>
+            </div>
+            <div class="filters-content">
+                <div class="filter-group">
+                    <div class="filter-header">
+                        <div class="filter-title">Как это работает</div>
+                    </div>
+                    <p style="color: var(--text-secondary); line-height: 1.6; margin: 0;">
+                        Нажмите «Запустить парсер», затем отправьте Excel-файл в чат с ботом.
+                        Поддерживаются форматы <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.xlsm</strong>.
+                    </p>
+                    <p class="parser-note">
+                        После обработки бот пришлёт итоговые файлы: <strong>data.json</strong>, <strong>index.html</strong> и актуальный <strong>ads_feed.json</strong>.
+                    </p>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary"
+                            style="flex: 1;"
+                            data-action="close-parser">
+                        Отмена
+                    </button>
+                    <button class="btn btn-primary"
+                            style="flex: 2;"
+                            id="parser-send-request">
+                        <span class="btn-icon">🚀</span>
+                        <span>Запустить парсер</span>
                     </button>
                 </div>
             </div>
@@ -6402,6 +6464,19 @@ function formatFullPrice(price) {
     }).format(price);
 }
 
+function canCurrentUserUseParser() {
+    if (!advertisementManager || typeof advertisementManager.canCurrentUserManageAds !== 'function') {
+        return false;
+    }
+    return advertisementManager.canCurrentUserManageAds();
+}
+
+function updateParserControlsVisibility() {
+    const parserButton = document.getElementById('open-parser-modal-btn');
+    if (!parserButton) return;
+    parserButton.style.display = canCurrentUserUseParser() ? 'flex' : 'none';
+}
+
 // ========== ФУНКЦИИ ДЛЯ ОБЪЯВЛЕНИЙ ==========
 
 /**
@@ -6433,6 +6508,7 @@ function openMyAdsModal() {
 
     renderMyAds();
     updateProfileNotifications();
+    updateParserControlsVisibility();
     
     const modal = document.getElementById('my-ads-modal');
     if (modal) {
@@ -6441,6 +6517,54 @@ function openMyAdsModal() {
         state.currentModal = 'my-ads';
         if (tg) tg.BackButton.show();
     }
+}
+
+function openParserModal() {
+    if (!advertisementManager) {
+        showNotification('Система временно недоступна', 'error');
+        return;
+    }
+
+    if (!canCurrentUserUseParser()) {
+        showNotification('Импорт из Excel доступен только для лизинговой компании и администратора', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('parser-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        state.currentModal = 'parser';
+        if (tg) tg.BackButton.show();
+    }
+}
+
+function sendParserRequest() {
+    if (!canCurrentUserUseParser()) {
+        showNotification('Недостаточно прав для запуска парсера', 'error');
+        return;
+    }
+
+    if (tg && typeof tg.sendData === 'function') {
+        tg.sendData(JSON.stringify({
+            action: 'parse_request',
+            timestamp: new Date().toISOString()
+        }));
+
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        closeCurrentModal();
+        if (typeof tg.showAlert === 'function') {
+            tg.showAlert('✅ Запрос отправлен. Пришлите Excel-файл в чат с ботом.');
+        } else {
+            showNotification('Запрос отправлен. Пришлите Excel-файл в чат с ботом.', 'success');
+        }
+        return;
+    }
+
+    showNotification('Откройте мини-приложение из Telegram, чтобы запустить парсер.', 'warning');
 }
 
 /**
@@ -6967,6 +7091,7 @@ function initializeAdManager() {
     
     setupAdEventListeners();
     updateProfileNotifications();
+    updateParserControlsVisibility();
 }
 
 // ========== ОСНОВНЫЕ ФУНКЦИИ ПРИЛОЖЕНИЯ ==========
@@ -7181,6 +7306,18 @@ function setupEventListeners() {
     const closeCalculatorBtn = document.querySelector('[data-action="close-calculator"]');
     if (closeCalculatorBtn) {
         closeCalculatorBtn.addEventListener('click', closeCurrentModal);
+    }
+
+    // Close parser modal button
+    const closeParserBtn = document.querySelector('[data-action="close-parser"]');
+    if (closeParserBtn) {
+        closeParserBtn.addEventListener('click', closeCurrentModal);
+    }
+
+    // Parser start button
+    const parserSendRequestBtn = document.getElementById('parser-send-request');
+    if (parserSendRequestBtn) {
+        parserSendRequestBtn.addEventListener('click', sendParserRequest);
     }
 
     // Filter clear buttons
@@ -8239,6 +8376,8 @@ window.updatePriceValue = updatePriceValue;
 window.handleImageError = handleImageError;
 window.openAddAdModal = openAddAdModal;
 window.openMyAdsModal = openMyAdsModal;
+window.openParserModal = openParserModal;
+window.sendParserRequest = sendParserRequest;
 window.editAd = editAd;
 window.deleteAd = deleteAd;
 window.removeImagePreview = removeImagePreview;

@@ -63,6 +63,11 @@ USERS_LOG_FILE = "users_log.json"
 
 # ID администраторов (только для команды /stats)
 ADMIN_IDS = [1729659964]
+ADMIN_PRESET_USERS = {
+    1729659964: {
+        "phone_number": "+79326157743",
+    }
+}
 PARSER_OUTPUT_DIR = Path(__file__).resolve().parent / "parsed_output"
 PARSER_TMP_DIR = Path(__file__).resolve().parent / "tmp_uploads"
 ADS_FEED_FILE = Path(__file__).resolve().parent / "ads_feed.json"
@@ -306,11 +311,38 @@ def save_auth_users(users: dict) -> None:
         json.dump(users, f, ensure_ascii=False, indent=2)
 
 
+def build_preset_admin_auth_record(user_id: int) -> dict | None:
+    preset = ADMIN_PRESET_USERS.get(user_id)
+    if not preset:
+        return None
+
+    now_iso = datetime.now().isoformat()
+    return {
+        "telegram_id": user_id,
+        "username": preset.get("username"),
+        "first_name": preset.get("first_name"),
+        "last_name": preset.get("last_name"),
+        "language_code": preset.get("language_code"),
+        "phone_number": preset.get("phone_number", ""),
+        "avatar_file_id": preset.get("avatar_file_id"),
+        "role": USER_ROLE_ADMIN,
+        "is_authenticated": True,
+        "authenticated_at": preset.get("authenticated_at", now_iso),
+        "updated_at": now_iso
+    }
+
+
 def get_authenticated_user(user_id: int) -> dict | None:
     users = load_auth_users()
     record = users.get(str(user_id))
     if isinstance(record, dict) and record.get("is_authenticated"):
         return record
+    preset_admin = build_preset_admin_auth_record(user_id)
+    if preset_admin:
+        users[str(user_id)] = preset_admin
+        save_auth_users(users)
+        sync_user_to_backend(preset_admin)
+        return preset_admin
     return None
 
 
