@@ -6508,14 +6508,13 @@ function canCurrentUserUseParser() {
 }
 
 function updateParserControlsVisibility() {
-    const allowed = canCurrentUserUseParser();
     const parserProfileButton = document.getElementById('open-parser-modal-btn');
     const parserSortButton = document.getElementById('parser-sort-btn');
     if (parserProfileButton) {
-        parserProfileButton.style.display = allowed ? 'flex' : 'none';
+        parserProfileButton.style.display = 'flex';
     }
     if (parserSortButton) {
-        parserSortButton.style.display = allowed ? 'inline-flex' : 'none';
+        parserSortButton.style.display = 'inline-flex';
     }
 }
 
@@ -6567,11 +6566,6 @@ function openParserModal() {
         return;
     }
 
-    if (!canCurrentUserUseParser()) {
-        showNotification('Импорт из Excel доступен только для лизинговой компании и администратора', 'warning');
-        return;
-    }
-
     const modal = document.getElementById('parser-modal');
     if (modal) {
         modal.style.display = 'block';
@@ -6582,11 +6576,6 @@ function openParserModal() {
 }
 
 function sendParserRequest() {
-    if (!canCurrentUserUseParser()) {
-        showNotification('Недостаточно прав для запуска парсера', 'error');
-        return;
-    }
-
     if (tg && typeof tg.sendData === 'function') {
         tg.sendData(JSON.stringify({
             action: 'parse_request',

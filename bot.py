@@ -50,7 +50,11 @@ logger = logging.getLogger(__name__)
 
 # Ваши данные
 TOKEN = os.getenv("BOT_TOKEN", "")
-HTML_FILE_URL = os.getenv("HTML_FILE_URL", "https://lurzyako.github.io/bot/")
+DEFAULT_HTML_FILE_URL = "https://lurzyako.github.io/bot/"
+_html_url_from_env = os.getenv("HTML_FILE_URL", DEFAULT_HTML_FILE_URL).strip()
+if "lurzyako.github.io/kfl" in _html_url_from_env:
+    _html_url_from_env = _html_url_from_env.replace("lurzyako.github.io/kfl", "lurzyako.github.io/bot")
+HTML_FILE_URL = _html_url_from_env or DEFAULT_HTML_FILE_URL
 DJANGO_BACKEND_URL = os.getenv("DJANGO_BACKEND_URL", "").rstrip("/")
 DJANGO_BACKEND_API_KEY = os.getenv("DJANGO_BACKEND_API_KEY", "")
 try:
